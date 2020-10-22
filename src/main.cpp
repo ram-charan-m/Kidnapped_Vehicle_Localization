@@ -29,8 +29,8 @@ int main() {
   uWS::Hub h;
 
   // Set up parameters here
-  double delta_t = 0.1;  // Time elapsed between measurements [sec]
-  double sensor_range = 50;  // Sensor range [m]
+  double delta_t = 0.1;  // Time step for sensor measurements [sec]
+  double sensor_range = 50;  // Sensor range of sensing [m]
 
   // GPS measurement uncertainty [x [m], y [m], theta [rad]]
   double sigma_pos [3] = {0.3, 0.3, 0.01};
@@ -50,6 +50,7 @@ int main() {
   h.onMessage([&pf,&map,&delta_t,&sensor_range,&sigma_pos,&sigma_landmark]
               (uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length, 
                uWS::OpCode opCode) {
+    // Message Description
     // "42" at the start of the message means there's a websocket message event.
     // The 4 signifies a websocket message
     // The 2 signifies a websocket event
@@ -68,11 +69,11 @@ int main() {
             double sense_x = std::stod(j[1]["sense_x"].get<string>());
             double sense_y = std::stod(j[1]["sense_y"].get<string>());
             double sense_theta = std::stod(j[1]["sense_theta"].get<string>());
-
-            pf.init(sense_x, sense_y, sense_theta, sigma_pos);
+            // Initializing pf ParticleFilter with this gps data from simulator as a starting point
+            pf.init(sense_x, sense_y, sense_theta, sigma_pos); 
           } else {
             // Predict the vehicle's next state from previous 
-            //   (noiseless control) data.
+            //   (noiseless control) data for subsequent localization steps
             double previous_velocity = std::stod(j[1]["previous_velocity"].get<string>());
             double previous_yawrate = std::stod(j[1]["previous_yawrate"].get<string>());
 
@@ -80,12 +81,15 @@ int main() {
           }
 
           // receive noisy observation data from the simulator
-          // sense_observations in JSON format 
-          //   [{obs_x,obs_y},{obs_x,obs_y},...{obs_x,obs_y}] 
+          // sense_observations in JSON format
+          //   [{obs_x,obs_y},{obs_x,obs_y},...{obs_x,obs_y}]
           vector<LandmarkObs> noisy_observations;
           string sense_observations_x = j[1]["sense_observations_x"];
           string sense_observations_y = j[1]["sense_observations_y"];
 
+          // At each timestep, the numerous landmarks are
+          // observed. So, are inserted using bask inserter
+          // and istream_iterator
           vector<float> x_sense;
           std::istringstream iss_x(sense_observations_x);
 
@@ -100,6 +104,9 @@ int main() {
           std::istream_iterator<float>(),
           std::back_inserter(y_sense));
 
+          // Each landmark observation's coordinates are
+          // set and push_back into noisy_observations as
+          // obs instance of LandmarksObs class      
           for (int i = 0; i < x_sense.size(); ++i) {
             LandmarkObs obs;
             obs.x = x_sense[i];
@@ -130,6 +137,7 @@ int main() {
           std::cout << "highest w " << highest_weight << std::endl;
           std::cout << "average w " << weight_sum/num_particles << std::endl;
 
+          // Transmit best position as a message for display on simulator
           json msgJson;
           msgJson["best_particle_x"] = best_particle.x;
           msgJson["best_particle_y"] = best_particle.y;
