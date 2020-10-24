@@ -12,6 +12,7 @@
 #include <string>
 #include <vector>
 #include "helper_functions.h"
+#include "map.h"
 
 struct Particle {
   int id;
@@ -57,15 +58,20 @@ class ParticleFilter {
   void prediction(double delta_t, double std_pos[], double velocity, 
                   double yaw_rate);
   
-  /**
-   * dataAssociation Finds which observations correspond to which landmarks 
-   *   (likely by using a nearest-neighbors data association).
-   * @param predicted Vector of predicted landmark observations
-   * @param observations Vector of landmark observations
-   */
-  void dataAssociation(std::vector<LandmarkObs> predicted, 
-                       std::vector<LandmarkObs>& observations);
+//   /**
+//    * dataAssociation Finds which observations correspond to which landmarks 
+//    *   (likely by using a nearest-neighbors data association).
+//    * @param predicted Vector of predicted landmark observations
+//    * @param observations Vector of landmark observations
+//    */
+//   void dataAssociation(Map predicted, 
+//                        std::vector<LandmarkObs>& observations);
   
+    // Multivariate Gaussian density function
+  double multiv_prob(double sig_x, double sig_y, double x_obs, double y_obs,
+                     double mu_x, double mu_y); 
+  
+   
   /**
    * updateWeights Updates the weights for each particle based on the likelihood
    *   of the observed measurements. 

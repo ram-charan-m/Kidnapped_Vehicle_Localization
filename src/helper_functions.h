@@ -15,6 +15,7 @@
 #include <string>
 #include <vector>
 #include "map.h"
+#include <cmath>
 
 // for portability of M_PI (Vis Studio, MinGW, etc.)
 #ifndef M_PI
@@ -57,6 +58,7 @@ struct LandmarkObs {
 inline double dist(double x1, double y1, double x2, double y2) {
   return sqrt((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1));
 }
+
 
 /**
  * Computes the error between ground truth and particle filter data.

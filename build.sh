@@ -15,5 +15,6 @@ cd `dirname $0`
 # Compile code.
 mkdir -p build
 cd build
-cmake ..
+# cmake ..
+cmake -DCMAKE_BUILD_TYPE=Debug ..
 make $*

@@ -107,7 +107,7 @@ int main() {
           // Each landmark observation's coordinates are
           // set and push_back into noisy_observations as
           // obs instance of LandmarksObs class      
-          for (int i = 0; i < x_sense.size(); ++i) {
+          for (int i = 0; i < int(x_sense.size()); ++i) {
             LandmarkObs obs;
             obs.x = x_sense[i];
             obs.y = y_sense[i];
