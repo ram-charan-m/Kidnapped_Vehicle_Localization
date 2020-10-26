@@ -23,35 +23,32 @@ using std::string;
 using std::vector;
 using std::normal_distribution;
 
+std::random_device rd;
+std::default_random_engine gen(rd());
 
+// Initializes filter using GPS estimates of vehicle position
 void ParticleFilter::init(double x, double y, double theta, double std[]) {
-  std::cout<<"INITIALIZATION"<<std::endl;
-  std::cout<<"GPS Vehicle Coordinates: ("<<x<<","<<y<<")"<<std::endl;
+//   std::cout<<"INITIALIZATION"<<std::endl;
+//   std::cout<<"GPS Vehicle Coordinates: ("<<x<<","<<y<<")"<<std::endl;
   num_particles = 100;  // The number of particles
-  Particle particle; // Particles to be push_back into particles vector
-  std::random_device rd;
-  std::default_random_engine gen(rd());
-  double std_x, std_y, std_theta;
-  std_x = std[0];
-  std_y = std[1];
-  std_theta = std[2];
+  particles.resize(num_particles); // Reszing particles vector
+
   // Adding gaussian noise to position
-  normal_distribution<double> dist_x(0,std_x);
-  normal_distribution<double> dist_y(0,std_y);
-  normal_distribution<double> dist_theta(0,std_theta);
+  normal_distribution<double> dist_x(x,std[0]);
+  normal_distribution<double> dist_y(y,std[1]);
+  normal_distribution<double> dist_theta(theta,std[2]);
   for (int i=0; i < num_particles; ++i){
-    particle.id = i;
-    // Generating random positions with added noise
-    particle.x = x + dist_x(gen); 
-    particle.y = y + dist_y(gen);
-    particle.theta = theta + dist_theta(gen);
-    particle.weight = 1;
-    particles.push_back(particle);    
+    particles[i].id = i;
+    particles[i].x = dist_x(gen); 
+    particles[i].y = dist_y(gen);
+    particles[i].theta = dist_theta(gen);
+    particles[i].weight = 1;
   } 
   is_initialized = true; // Setting initialized as true post initialization
 //   std::cout<<"Particle x coordinate: "<< particles[0].x <<"Particle y coordinate: "<< particles[0].y <<std::endl;
 }
 
+// Post initialization, predicts vehicle position after the introduction of control inputs
 void ParticleFilter::prediction(double delta_t, double std_pos[], 
                                 double velocity, double yaw_rate) {  
   // Iterating through all particles 
@@ -67,9 +64,10 @@ void ParticleFilter::prediction(double delta_t, double std_pos[],
     else{
       particles[i].x += velocity * delta_t * cos(particles[i].theta);
       particles[i].y += velocity * delta_t * sin(particles[i].theta);
+//       particles[i].theta += (yaw_rate*delta_t);
     }
-    
-    std::default_random_engine gen;
+    std::random_device rd;
+    std::default_random_engine gen(rd());
     normal_distribution<double> dist_x(0,std_pos[0]);
     normal_distribution<double> dist_y(0,std_pos[1]);
     normal_distribution<double> dist_theta(0,std_pos[2]);
@@ -143,7 +141,7 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
             min = dis_O2LM;
             // Assigning the closest predicted map landmark id to observation id
             map_observations[k].id = map_landmarks.landmark_list[l].id_i;
-//             std::cout<<"Particle "<<i<<"Observation "<<k<<"Association made to Landmark"<<l<<std::endl;
+            std::cout<<"Particle "<<i<<": Observation "<<k<<" is Associated to Landmark"<<l<<std::endl;
           }
         }
       }
@@ -179,43 +177,44 @@ void ParticleFilter::resample() {
   for(int i=0; i < num_particles; ++i){
     weights[i]=particles[i].weight;
   }
-  double max_weight = *max_element(weights.begin(),weights.end());
+//   double max_weight = *max_element(weights.begin(),weights.end());
   
   vector<Particle> new_particles;
 
-  // Starting point Index for Resampling Wheel
-  std::uniform_int_distribution<int> uniintdist(0, num_particles-1);
-  std::default_random_engine gen;
-  int index = uniintdist(gen);
+//   // Starting point Index for Resampling Wheel
+//   std::uniform_int_distribution<int> uniintdist(0, num_particles-1);
+//   std::default_random_engine gen;
+//   int index = uniintdist(gen);
 
-  // uniform random distribution 
-  std::uniform_real_distribution<double> unirealdist(0.0, max_weight);
-  double beta = 0.0;
+//   // uniform random distribution 
+//   std::uniform_real_distribution<double> unirealdist(0.0, max_weight);
+//   double beta = 0.0;
 
-  // Resampling Wheel algorithm
-  for (int i = 0; i < num_particles; i++) {
-    beta += unirealdist(gen)*2.0;
-    while (beta > weights[index]) {
-      beta -= weights[index];
-      index = (index+1)%num_particles;
-    }
-    new_particles.push_back(particles[index]);
-  }
+//   // Resampling Wheel algorithm
+//   for (int i = 0; i < num_particles; i++) {
+//     beta += unirealdist(gen)*2.0;
+//     while (beta > weights[index]) {
+//       beta -= weights[index];
+//       index = (index+1)%num_particles;
+//     }
+//     new_particles.push_back(particles[index]);
+//   }
 
-  particles = new_particles;    
+//   particles = new_particles;    
   
 // Using Discrete_Distribution alone
-//   std::random_device rd;
-//   std::mt19937 gen(rd());
-//   std::discrete_distribution<int> index(weights.begin(), weights.end());
+  std::random_device rd;
+  std::mt19937 gen(rd());
+  std::discrete_distribution<int> index(weights.begin(), weights.end());
 
   
-//   for(int i=0; i < num_particles; ++i){
-//     int ind = index(gen);
-//     std::cout<<"Generated Index: "<<ind<<std::endl;
-//     particles[i] = particles[ind];
-//     std::cout<<"Resampled Particle "<<i<<" coordinates: ("<<particles[i].x<<","<<particles[i].y<<")"<<std::endl;
-//   }
+  for(int i=0; i < num_particles; ++i){
+    int ind = index(gen);
+    std::cout<<"Generated Index: "<<ind<<std::endl;
+    new_particles.push_back(particles[ind]);
+    std::cout<<"Resampled Particle "<<i<<" coordinates: ("<<particles[i].x<<","<<particles[i].y<<")"<<std::endl;
+  }
+  particles = new_particles;
 }      
 
 
