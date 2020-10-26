@@ -56,7 +56,7 @@ void ParticleFilter::prediction(double delta_t, double std_pos[],
   for (int i=0; i < num_particles; ++i){
     // Bicycle motion model for particle coordinates prediction
     
-    if (abs(yaw_rate)>0.001){
+    if (abs(yaw_rate)>0.0001){
       particles[i].x += ( (velocity/yaw_rate)*( sin(particles[i].theta + (yaw_rate*delta_t)) - sin(particles[i].theta) ));
       particles[i].y += ( (velocity/yaw_rate)*( cos(particles[i].theta) - cos(particles[i].theta + (yaw_rate*delta_t)) ));
       particles[i].theta += (yaw_rate*delta_t);
@@ -64,7 +64,7 @@ void ParticleFilter::prediction(double delta_t, double std_pos[],
     else{
       particles[i].x += velocity * delta_t * cos(particles[i].theta);
       particles[i].y += velocity * delta_t * sin(particles[i].theta);
-//       particles[i].theta += (yaw_rate*delta_t);
+      particles[i].theta += (yaw_rate*delta_t);
     }
     std::random_device rd;
     std::default_random_engine gen(rd());
