@@ -32,7 +32,8 @@ void ParticleFilter::init(double x, double y, double theta, double std[]) {
 //   std::cout<<"GPS Vehicle Coordinates: ("<<x<<","<<y<<")"<<std::endl;
   num_particles = 100;  // The number of particles
   particles.resize(num_particles); // Reszing particles vector
-
+  weights.resize(num_particles); // Resizing weights vector
+  
   // Adding gaussian noise to position
   normal_distribution<double> dist_x(x,std[0]);
   normal_distribution<double> dist_y(y,std[1]);
@@ -52,10 +53,9 @@ void ParticleFilter::init(double x, double y, double theta, double std[]) {
 void ParticleFilter::prediction(double delta_t, double std_pos[], 
                                 double velocity, double yaw_rate) {  
   // Iterating through all particles 
-  std::cout<<"PREDICTION"<<std::endl;
+//   std::cout<<"PREDICTION"<<std::endl;
   for (int i=0; i < num_particles; ++i){
-    // Bicycle motion model for particle coordinates prediction
-    
+    // Bicycle motion model for particle coordinates prediction    
     if (abs(yaw_rate)>0.0001){
       particles[i].x += ( (velocity/yaw_rate)*( sin(particles[i].theta + (yaw_rate*delta_t)) - sin(particles[i].theta) ));
       particles[i].y += ( (velocity/yaw_rate)*( cos(particles[i].theta) - cos(particles[i].theta + (yaw_rate*delta_t)) ));
@@ -66,8 +66,6 @@ void ParticleFilter::prediction(double delta_t, double std_pos[],
       particles[i].y += velocity * delta_t * sin(particles[i].theta);
       particles[i].theta += (yaw_rate*delta_t);
     }
-    std::random_device rd;
-    std::default_random_engine gen(rd());
     normal_distribution<double> dist_x(0,std_pos[0]);
     normal_distribution<double> dist_y(0,std_pos[1]);
     normal_distribution<double> dist_theta(0,std_pos[2]);
@@ -76,12 +74,10 @@ void ParticleFilter::prediction(double delta_t, double std_pos[],
     particles[i].y += dist_y(gen);
     particles[i].theta += dist_theta(gen);   
     
-    std::cout<<"Predicted particle"<<i<<" coordinates are: ("<<particles[i].x<<","<<particles[i].y<<")"<<std::endl;
+//     std::cout<<"Predicted particle"<<i<<" coordinates are: ("<<particles[i].x<<","<<particles[i].y<<")"<<std::endl;
   } 
 //   std::cout<<"Predicted Particle x coordinate:"<< particles[0].x <<"Predicted Particle y coordinate: "<< particles[0].y <<std::endl;
 }
-
-
 
 // Multivariate Gaussian density function
 double ParticleFilter::multiv_prob(double sig_x, double sig_y, double x_obs, double y_obs,
@@ -102,6 +98,7 @@ double ParticleFilter::multiv_prob(double sig_x, double sig_y, double x_obs, dou
   return weight;
 }
 
+// Updates weights on each particle using multivariate gaussian density function
 void ParticleFilter::updateWeights(double sensor_range, double std_landmark[], 
                                    const vector<LandmarkObs> &observations, 
                                    const Map &map_landmarks) {  
@@ -129,19 +126,19 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
       // Initializing minimum diatance from landmark to observation
       double min = 2*sensor_range; 
    
-      // Finding which predicted landmark on map is closest
       for(size_t l=0; l < map_landmarks.landmark_list.size(); ++l){
         double x_lm = double(map_landmarks.landmark_list[l].x_f);
         double y_lm = double(map_landmarks.landmark_list[l].y_f);
         // Calculating distance of current particle and landmark
         double dis_P2LM = dist(x_lm, y_lm, x_p, y_p);
         if(dis_P2LM <= sensor_range){
+          // Associating observations with landmarks within sensor range
           double dis_O2LM = dist(x_lm, y_lm, map_observations[k].x, map_observations[k].y);
           if(dis_O2LM < min){
             min = dis_O2LM;
             // Assigning the closest predicted map landmark id to observation id
             map_observations[k].id = map_landmarks.landmark_list[l].id_i;
-            std::cout<<"Particle "<<i<<": Observation "<<k<<" is Associated to Landmark"<<l<<std::endl;
+//             std::cout<<"Particle "<<i<<": Observation "<<k<<" is Associated to Landmark"<<l<<std::endl;
           }
         }
       }
@@ -166,22 +163,29 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
       tot_weight = tot_weight*multiv_prob(sig_x, sig_y, x_obs, y_obs, mu_x, mu_y);          
     }    
     particles[i].weight = tot_weight;
-    std::cout<<"Total Weight for Particle "<<i<<" is "<<particles[i].weight<<std::endl;
+    weights[i] = tot_weight;
+//     std::cout<<"Total Weight for Particle "<<i<<" is "<<particles[i].weight<<std::endl;
   }
 }
 
 void ParticleFilter::resample() {
   // Weights vector  
-  std::cout<<"RESAMPLING"<<std::endl;
-  weights.resize(num_particles);
-  for(int i=0; i < num_particles; ++i){
-    weights[i]=particles[i].weight;
-  }
-//   double max_weight = *max_element(weights.begin(),weights.end());
+//   std::cout<<"RESAMPLING"<<std::endl;
   
-  vector<Particle> new_particles;
+  vector<Particle> new_particles;  
+  // Using Discrete_Distribution alone
+  std::discrete_distribution<int> index(weights.begin(), weights.end());
+  
+  for(int i=0; i < num_particles; ++i){
+    int ind = index(gen);
+//     std::cout<<"Generated Index: "<<ind<<std::endl;
+    new_particles.push_back(particles[ind]);
+//     std::cout<<"Resampled Particle "<<i<<" coordinates: ("<<particles[i].x<<","<<particles[i].y<<")"<<std::endl;
+  }
+  particles = new_particles;
 
 //   // Starting point Index for Resampling Wheel
+//   double max_weight = *max_element(weights.begin(),weights.end());
 //   std::uniform_int_distribution<int> uniintdist(0, num_particles-1);
 //   std::default_random_engine gen;
 //   int index = uniintdist(gen);
@@ -202,19 +206,6 @@ void ParticleFilter::resample() {
 
 //   particles = new_particles;    
   
-// Using Discrete_Distribution alone
-  std::random_device rd;
-  std::mt19937 gen(rd());
-  std::discrete_distribution<int> index(weights.begin(), weights.end());
-
-  
-  for(int i=0; i < num_particles; ++i){
-    int ind = index(gen);
-    std::cout<<"Generated Index: "<<ind<<std::endl;
-    new_particles.push_back(particles[ind]);
-    std::cout<<"Resampled Particle "<<i<<" coordinates: ("<<particles[i].x<<","<<particles[i].y<<")"<<std::endl;
-  }
-  particles = new_particles;
 }      
 
 
